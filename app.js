@@ -19,6 +19,7 @@ const MongoStore = require("connect-mongo");
 const modulesRouter = require('./routes/modules');
 const WebSocket = require("ws");
 const { authenticateWebSocket } = require("./middleware/authenticate");
+const chatRoutes = require("./routes/chat");
 
 // ============================
 // 2. EXPRESS APP & HTTP SERVER
@@ -305,6 +306,7 @@ testRoutes.post("/achievement", (req, res) => {
 });
 
 app.use("/api/test", testRoutes);
+app.use("/api/chat", chatRoutes);
 
 // ============================
 // 10. ERROR HANDLING

@@ -1,8 +1,14 @@
 const mongoose = require("mongoose");
 
-const ChatSchema = new mongoose.Schema({
+const chatSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
-  messages: [{ sender: String, text: String, timestamp: Date }],
+  messages: [
+    {
+      sender: { type: String, required: true }, // "user" or "ai"
+      text: { type: String, required: true },
+      timestamp: { type: Date, default: Date.now }
+    }
+  ]
 });
 
-module.exports = mongoose.model("Chat", ChatSchema);
+module.exports = mongoose.model("Chat", chatSchema);
