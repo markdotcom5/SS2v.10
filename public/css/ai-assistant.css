@@ -2,10 +2,22 @@
 
 .ai-companion {
     position: fixed;
-    bottom: 2rem;
-    right: 2rem;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 10px;
+    color: white;
+    font-size: 16px;
+    transition: opacity 0.3s ease-in-out;
 }
+
 
 .ai-avatar {
     width: 60px;

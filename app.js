@@ -16,7 +16,9 @@ const fs = require("fs");
 const http = require("http");
 const compression = require("compression");
 const MongoStore = require("connect-mongo");
-const { authenticate } = require("./middleware/authenticate");
+const modulesRouter = require('./routes/modules');
+const WebSocket = require("ws");
+const { authenticateWebSocket } = require("./middleware/authenticate");
 
 // ============================
 // 2. EXPRESS APP & HTTP SERVER
@@ -27,28 +29,43 @@ const server = http.createServer(app);
 // ============================
 // 3. WEBSOCKET SETUP
 // ============================
-const { setupWebSocketServer } = require("./middleware/authenticate");
-const { wss, broadcastMessage } = setupWebSocketServer(server);
-console.log("✅ WebSocket Server Initialized");
+const wss = new WebSocket.Server({ noServer: true });
 
-// Set the global reference for other modules
-const wsHolder = require("./utils/wsHolder");
-wsHolder.wss = wss;
-wsHolder.broadcastMessage = broadcastMessage;
+server.on("upgrade", (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+        // ✅ Move authentication inside the connection
+        const authData = authenticateWebSocket(request);
 
-// Now attach your connection handler
-wss.on("connection", (ws, req) => {
-  const { userId, role } = req.authData || {};
-  ws.userId = userId;
-  console.log(`New connection for user ${userId}`);
-  
-  ws.on("message", (message) => {
-    console.log(`📩 Message from ${userId}: ${message}`);
-  });
+        if (!authData) {
+            console.warn("❌ Unauthorized WebSocket attempt.");
+            ws.close(4001, "Unauthorized");
+            return;
+        }
 
-  ws.on("close", () => {
-    console.log(`❌ Connection closed for user ${userId}`);
-  });
+        ws.authData = authData; // Attach authenticated user data
+        wss.emit("connection", ws, request);
+    });
+});
+
+// ✅ Handle WebSocket connections AFTER authentication
+wss.on("connection", (ws) => {
+    const { userId, role } = ws.authData;
+
+    if (!userId) {
+        console.warn("❌ Unauthorized WebSocket attempt.");
+        ws.close(4001, "Unauthorized");
+        return;
+    }
+
+    console.log(`✅ WebSocket connection authenticated for user ${userId}`);
+
+    ws.on("message", (message) => {
+        console.log(`📩 WebSocket message from ${userId}:`, message);
+    });
+
+    ws.on("close", () => {
+        console.log(`❌ WebSocket connection closed for user ${userId}`);
+    });
 });
 
 // ============================
@@ -123,10 +140,8 @@ app.use(
 );
 
 // ============================
-// 6. VIEW ENGINE & STATIC FILES
+// 6. STATIC FILES (No EJS View Engine)
 // ============================
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ============================
@@ -156,6 +171,14 @@ app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/training", trainingRoutes);
 app.use("/api/dashboard", dashboardRouter);
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/api/modules', modulesRouter);
+app.use("/js", express.static(path.join(__dirname, "public/js")));
+  setHeaders: (res, path) => { 
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    }
+  }
+;
 
 // Define routes (for example, /academy, /about, etc.)
 app.get('/academy', (req, res) => {
@@ -164,6 +187,10 @@ app.get('/academy', (req, res) => {
 app.get('/about', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'about.html'));
 });
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 // Additional Routers via safeRequire (if any)
 const safeRequire = (modulePath) => {
   try {

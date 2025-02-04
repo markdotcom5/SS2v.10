@@ -3,6 +3,7 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const WebSocket = require("ws");
 const mongoose = require("mongoose");
+const SECRET_KEY = process.env.JWT_SECRET; // Ensure this is set in .env
 
 // Middleware: Authenticate HTTP Requests
 const authenticate = async (req, res, next) => {
@@ -50,24 +51,26 @@ const requireRole = (roles = []) => (req, res, next) => {
 };
 
 // WebSocket Authentication Function
-const authenticateWebSocket = (request) => {
+function authenticateWebSocket(req) {
     try {
-        const url = new URL(request.url, `http://${request.headers.host}`);
-        const token = url.searchParams.get("token") || request.headers["authorization"]?.split(" ")[1];
+        const params = new URLSearchParams(req.url.split('?')[1]);
+        const token = params.get('token');
 
         if (!token) {
-            console.warn("❌ WebSocket authentication failed: No token provided.");
+            console.warn("❌ No token provided for WebSocket connection.");
             return null;
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "default-secret-key");
-        console.log("✅ WebSocket authenticated successfully for user:", decoded._id);
-        return { userId: decoded._id, role: decoded.role || "user" };
+        // Verify JWT Token
+        const decoded = jwt.verify(token, SECRET_KEY);
+        console.log("✅ WebSocket Token Verified:", decoded);
+        
+        return decoded; // Return user info
     } catch (error) {
-        console.error("❌ WebSocket authentication error:", error.message);
+        console.error("❌ Invalid WebSocket token:", error.message);
         return null;
     }
-};
+}
 
 // ✅ WebSocket Server Setup (UPDATED)
 const setupWebSocketServer = (server) => {

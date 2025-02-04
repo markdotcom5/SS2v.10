@@ -142,33 +142,40 @@ async function detectUserLanguage() {
 /**
  * Initialize the language system
  */
-async function initLanguageSystem() {
-    let savedLang = localStorage.getItem('preferredLanguage');
-
-    if (!savedLang) {
-        savedLang = await detectUserLanguage();
-        localStorage.setItem('preferredLanguage', savedLang);
-    }
-
-    document.documentElement.lang = savedLang;
-    applyTranslations(savedLang);
-
-    // Handle menu language selection
-    document.querySelectorAll('[data-lang]').forEach(button => {
-        button.addEventListener('click', () => {
-            const selectedLang = button.dataset.lang;
-            localStorage.setItem('preferredLanguage', selectedLang);
-            document.documentElement.lang = selectedLang;
-            applyTranslations(selectedLang);
-
-            // Close menu after selection
-            const menuOverlay = document.getElementById('menuOverlay');
-            if (menuOverlay) {
-                menuOverlay.classList.add('hidden');
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".lang-btn").forEach(button => {
+        button.addEventListener("click", function () {
+            const selectedLang = this.getAttribute("data-lang");
+            if (!selectedLang) {
+                console.error("❌ Language attribute missing on flag.");
+                return;
             }
+
+            localStorage.setItem("selectedLang", selectedLang);
+            console.log(`🌍 Language changed to: ${selectedLang}`);
+            window.location.reload();
         });
     });
-}
+
+    // Apply saved language settings
+    const savedLang = localStorage.getItem("selectedLang") || "en"; // Default to English
+    document.documentElement.setAttribute("lang", savedLang);
+
+    // Example: Update text dynamically (if you have translations)
+    const translations = {
+        en: "Welcome, Space Explorer!",
+        es: "¡Bienvenido, Explorador Espacial!",
+        fr: "Bienvenue, Explorateur Spatial!",
+        de: "Willkommen, Weltraumforscher!"
+    };
+
+    const greetingElement = document.getElementById("aiGreeting");
+    if (greetingElement) {
+        greetingElement.innerText = translations[savedLang] || translations.en;
+    } else {
+        console.warn("⚠️ AI greeting element not found.");
+    }
+});
 
 // Run language system when page loads
 document.addEventListener("DOMContentLoaded", initLanguageSystem);

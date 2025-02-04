@@ -192,13 +192,17 @@ document.addEventListener('DOMContentLoaded', () => {
         window.webSocketManager = WebSocketManager;
         window.webSocketManager.connect();
         
-        window.leaderboardManager = new LeaderboardManager(window.webSocketManager);
-        console.log('✅ Leaderboard system initialized');
-    } catch (error) {
-        console.error('❌ Error initializing leaderboard:', error);
-    }
-});
+        class LeaderboardManager {
+            constructor(webSocketManager) {
+                this.webSocketManager = webSocketManager;
+            }
 
+            // ✅ Add this function to prevent "bindEvents is not a function" error
+            bindEvents() {
+                console.log("📌 bindEvents() called - No logic yet, but preventing errors");
+            }
+        }
+        
 // ✅ Achievement Notification System
 const NotificationManager = {
     showAchievementNotification(achievement) {
@@ -458,7 +462,7 @@ const LeaderboardAPI = {
     }
  };
  
-const state = {
+ const state = {
     currentPage: 1,
     pageSize: 10,
     totalPages: 1,
@@ -514,7 +518,7 @@ const state = {
             });
         }
     }
- };
+};
 
 function initializeState() {
     const params = new URLSearchParams(window.location.search);
@@ -525,25 +529,20 @@ function initializeState() {
     state.selectedDivision = params.get('division') || null;
 }
 
-// Event Handlers
 const EventHandlers = {
     setupEventListeners() {
-        // Filter Handlers
-        UI.elements.filters.ranking?.addEventListener('change', this.handleFilterChange);
-        UI.elements.filters.time?.addEventListener('change', this.handleFilterChange);
-        UI.elements.filters.search?.addEventListener('input', this.handleSearch);
- 
-        // Pagination
-        UI.elements.pagination.prev?.addEventListener('click', () => this.handlePageChange('prev'));
-        UI.elements.pagination.next?.addEventListener('click', () => this.handlePageChange('next'));
- 
-        // Video Section Handlers
-const videoSections = document.querySelectorAll('.video-section video');
-videoSections.forEach(video => {
-    video.addEventListener('error', this.handleVideoError);
-    video.addEventListener('canplay', () => this.handleVideoLoad(video));
-});
-            // Tournament Events
+        UI.elements?.filters?.ranking?.addEventListener('change', this.handleFilterChange);
+        UI.elements?.filters?.time?.addEventListener('change', this.handleFilterChange);
+        UI.elements?.filters?.search?.addEventListener('input', this.handleSearch);
+        UI.elements?.pagination?.prev?.addEventListener('click', () => this.handlePageChange('prev'));
+        UI.elements?.pagination?.next?.addEventListener('click', () => this.handlePageChange('next'));
+
+        const videoSections = document.querySelectorAll('.video-section video');
+        videoSections.forEach(video => {
+            video.addEventListener('error', this.handleVideoError);
+            video.addEventListener('canplay', () => this.handleVideoLoad(video));
+        });
+
         document.addEventListener('tournament:update', this.handleTournamentUpdate);
         document.addEventListener('achievement:unlock', this.handleAchievementUnlock);
     },
@@ -563,20 +562,13 @@ videoSections.forEach(video => {
     }, 300)
 };
 
-// Initialize everything when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        // Initialize managers
         window.webSocketManager = WebSocketManager;
         window.webSocketManager.connect();
-        
         window.leaderboardManager = new LeaderboardManager(window.webSocketManager);
-        
-        // Initialize state and event listeners
         initializeState();
         EventHandlers.setupEventListeners();
-
-        // Initial data load
         Promise.all([
             refreshLeaderboard(),
             LeaderboardAPI.getUserStats()
@@ -587,10 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Initialization error:', error);
             showError('Failed to initialize leaderboard');
         });
-
-        // Start periodic updates
         setInterval(refreshLeaderboard, CONFIG.REFRESH_INTERVAL);
-        
         console.log('Leaderboard system initialized successfully');
     } catch (error) {
         console.error('Error during initialization:', error);
@@ -598,8 +587,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Helper Functions
 function updateURL() {
+    if (typeof state === 'undefined') {
+        console.error("State object is not defined.");
+        return;
+    }
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(state)) {
         if (value !== null && value !== undefined) {
@@ -616,7 +608,12 @@ function debounce(fn, delay) {
         timeoutId = setTimeout(() => fn.apply(this, args), delay);
     };
 }
+
 function handlePageChange(direction) {
+    if (!state || typeof refreshLeaderboard !== 'function') {
+        console.error("State object or refreshLeaderboard function is not defined.");
+        return;
+    }
     if (direction === 'prev' && state.currentPage > 1) {
         state.currentPage--;
     } else if (direction === 'next' && state.currentPage < state.totalPages) {
@@ -626,9 +623,23 @@ function handlePageChange(direction) {
 }
 
 function showError(message) {
-    const notification = document.createElement('div');
-    notification.className = 'fixed top-4 right-4 bg-red-500/90 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+    if (!document.body) {
+        console.error("Document body not found. Ensure this script runs after the DOM is loaded.");
+        return;
+    }
+    const notification = document.createElement("div");
+    notification.className = "fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50";
+    notification.style.opacity = "1";
+    notification.style.transition = "opacity 0.5s ease-in-out";
     notification.textContent = message;
     document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 5000);
+    setTimeout(() => {
+        notification.style.opacity = "0";
+        setTimeout(() => notification.remove(), 500);
+    }, 5000);
 }
+
+document.getElementById("closeModal")?.addEventListener("click", () => {
+    document.getElementById("moduleModal")?.classList.add("hidden");
+});
+

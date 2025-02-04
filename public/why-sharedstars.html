@@ -116,19 +116,41 @@
     </div>
   </section>
 
-  <!-- AI Guidance Modal (Hidden by Default) -->
-  <dialog id="aiGuideModal" class="modal modal-bottom sm:modal-middle">
-    <div class="modal-box bg-slate-800 text-white">
-      <h3 class="font-bold text-lg text-center mb-6">Your Personal AI Coach</h3>
-      <div id="aiGuideContent" class="mb-6">
-        <!-- AI guidance message will be loaded here -->
-        <p class="text-center">Connecting to AI training systems...</p>
-      </div>
-      <div class="modal-action">
-        <button id="closeAIModal" class="btn btn-secondary">Close</button>
-      </div>
+<!-- AI Guidance Modal (Hidden by Default) -->
+<dialog id="aiGuideModal" class="modal modal-bottom sm:modal-middle">
+  <div class="modal-box bg-slate-800 text-white">
+    <h3 class="font-bold text-lg text-center mb-6">Your Personal AI Coach</h3>
+    <div id="aiGuideContent" class="mb-6">
+      <!-- AI guidance message will be loaded here -->
+      <p class="text-center">Connecting to AI training systems...</p>
     </div>
-  </dialog>
+    <div class="modal-action">
+      <button id="closeModal" class="btn">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- JavaScript to handle the modal close action -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const closeModalBtn = document.getElementById("closeModal");
+    if (closeModalBtn) {
+      closeModalBtn.addEventListener("click", function() {
+        // If using <dialog>'s native methods, you can call .close()
+        const aiGuideModal = document.getElementById("aiGuideModal");
+        if (aiGuideModal && typeof aiGuideModal.close === 'function') {
+          aiGuideModal.close();
+        } else {
+          // Alternatively, toggle a class if you're controlling visibility via CSS
+          aiGuideModal.classList.add("hidden");
+        }
+      });
+    } else {
+      console.error("Element with id 'closeModal' not found.");
+    }
+  });
+</script>
+
 
   <!-- Footer -->
   <footer class="relative bg-blue-950/90 text-white py-16 overflow-hidden">

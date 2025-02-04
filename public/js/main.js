@@ -152,24 +152,39 @@ document.addEventListener('DOMContentLoaded', function() {
             signupPopup.remove();
         });
     }
+// Retrieve stored authentication token
+const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
 
-        // WebSocket initialization example:
-        const socket = new WebSocket("ws://localhost:3000"); 
-        socket.onopen = () => console.log("✅ Connected to WebSocket Server");
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log("Received data:", data);
-        };
-        socket.onerror = (error) => console.error("❌ WebSocket Error:", error);
-        socket.onclose = () => console.warn("⚠️ WebSocket Disconnected!");
-    
+if (!token) {
+    console.error("❌ No authentication token found. WebSocket connection may fail.");
+}
 
-        async function beginTrainingJourney() {
-            console.log('🚀 Beginning training journey...');
-            const overlay = document.querySelector('.mode-overlay');
-            // ... rest of your code ...
-        }
-        
+// Connect WebSocket with authentication token
+const socket = new WebSocket(`ws://${window.location.host}/ws?token=${encodeURIComponent(token)}`);
+
+socket.onopen = () => console.log("✅ Connected to WebSocket Server with Authentication");
+
+socket.onmessage = (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        console.log("📡 WebSocket Message Received:", data);
+    } catch (error) {
+        console.error("❌ WebSocket Error:", error);
+    }
+};
+
+socket.onerror = (error) => console.error("❌ WebSocket Error:", error);
+socket.onclose = () => console.warn("⚠️ WebSocket Disconnected");
+
+// Function to begin training journey
+async function beginTrainingJourney() {
+    console.log('🚀 Beginning training journey...');
+    const overlay = document.querySelector('.mode-overlay');
+
+    if (!overlay) {
+        console.error("❌ Error: Overlay element not found.");
+        return;
+    }
 
     overlay.innerHTML = `
         <div class="training-interface">
@@ -193,12 +208,13 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
 
     // Attach event listener to Start Lesson button
-    overlay.querySelector('.next-lesson-btn').addEventListener('click', () => {
-        this.startLesson(1);
+    document.querySelector('.next-lesson-btn')?.addEventListener('click', () => {
+        startLesson(1);
     });
 }
 
-async startLesson(lessonNumber) {
+// Function to start a lesson
+async function startLesson(lessonNumber) {
     try {
         console.log(`📖 Starting Lesson ${lessonNumber}...`);
 
@@ -206,251 +222,120 @@ async startLesson(lessonNumber) {
             1: {
                 title: "Basic Space Concepts",
                 sections: [
-                    {
-                        type: "intro",
-                        content: "Welcome to your first space training lesson. Today we'll cover fundamental concepts about space and space travel."
-                    },
-                    {
-                        type: "content",
-                        title: "What is Space?",
-                        content: "Space begins at the Kármán line, approximately 100 kilometers (62 miles) above Earth's surface. This is where Earth's atmosphere becomes too thin for conventional aircraft to maintain lift."
-                    },
-                    {
-                        type: "interactive",
-                        question: "At what height does space begin?",
-                        options: ["50 kilometers", "100 kilometers (Kármán line)", "150 kilometers", "200 kilometers"],
-                        correct: 1
-                    },
-                    {
-                        type: "video_placeholder",
-                        description: "Space Environment Visualization",
-                        content: "This simulation shows the transition from Earth's atmosphere to space."
-                    },
-                    {
-                        type: "summary",
-                        content: "You've learned about the basic definition of space and where it begins. In the next lesson, we'll explore the challenges of surviving in this environment."
-                    }
+                    { type: "intro", content: "Welcome to your first space training lesson. Today we'll cover fundamental concepts about space and space travel." },
+                    { type: "content", title: "What is Space?", content: "Space begins at the Kármán line, approximately 100 kilometers (62 miles) above Earth's surface. This is where Earth's atmosphere becomes too thin for conventional aircraft to maintain lift." },
+                    { type: "interactive", question: "At what height does space begin?", options: ["50 kilometers", "100 kilometers (Kármán line)", "150 kilometers", "200 kilometers"], correct: 1 },
+                    { type: "video_placeholder", description: "Space Environment Visualization", content: "This simulation shows the transition from Earth's atmosphere to space." },
+                    { type: "summary", content: "You've learned about the basic definition of space and where it begins. In the next lesson, we'll explore the challenges of surviving in this environment." }
                 ],
                 duration: "20 minutes",
                 nextLesson: "Space Environment Challenges"
             }
         };
 
-        // ✅ Validate lesson existence
         if (!lessons[lessonNumber]) {
             console.error(`❌ Error: Lesson ${lessonNumber} not found.`);
             return;
         }
 
         const lesson = lessons[lessonNumber];
+        const overlay = document.querySelector('.mode-overlay');
 
-        console.log(`📝 Lesson Loaded: ${lesson.title}`);
-        console.log(`⏳ Duration: ${lesson.duration}`);
+        if (!overlay) {
+            console.error("❌ Error: Overlay element not found.");
+            return;
+        }
 
-        // ✅ Display lesson sections
-        lesson.sections.forEach((section, index) => {
-            console.log(`📌 Section ${index + 1}: ${section.type}`);
-            
-            if (section.type === "content") {
-                console.log(`📖 ${section.title}: ${section.content}`);
-            } else if (section.type === "interactive") {
-                console.log(`❓ ${section.question}`);
-                section.options.forEach((option, i) => {
-                    console.log(`   ${i + 1}. ${option}`);
+        overlay.innerHTML = `
+            <div class="lesson-interface p-6 bg-white rounded shadow-lg max-w-lg mx-auto">
+                <h2 class="text-xl font-bold text-gray-900">${lesson.title}</h2>
+                <div id="lessonContent" class="lesson-content mt-4"></div>
+                <button id="nextSectionBtn" class="hidden bg-blue-500 text-white px-4 py-2 mt-4 rounded hover:bg-blue-700 transition">Next</button>
+            </div>
+        `;
+
+        const contentContainer = overlay.querySelector("#lessonContent");
+        const nextBtn = overlay.querySelector("#nextSectionBtn");
+
+        let currentSectionIndex = 0;
+
+        function loadSection() {
+            if (currentSectionIndex >= lesson.sections.length) {
+                overlay.innerHTML = `
+                    <div class="lesson-complete p-6 bg-green-100 text-green-800 rounded shadow-md text-center">
+                        <h2 class="text-xl font-bold">🎉 Lesson Complete!</h2>
+                        <p class="mt-2">You've completed <strong>${lesson.title}</strong>. Your next lesson is: <strong>${lesson.nextLesson}</strong>.</p>
+                        <button class="continue-btn bg-green-500 text-white px-4 py-2 mt-4 rounded hover:bg-green-700 transition">Continue</button>
+                    </div>
+                `;
+
+                // Progress bar update
+                const progressElement = document.querySelector(".progress");
+                const progressCount = document.querySelector("#lessonProgressCount");
+                if (progressElement && progressCount) {
+                    progressElement.style.width = `100%`;
+                    progressCount.textContent = "5"; // Mark lesson complete
+                }
+
+                overlay.querySelector(".continue-btn").addEventListener("click", () => {
+                    beginTrainingJourney();
                 });
-            } else if (section.type === "video_placeholder") {
-                console.log(`🎥 ${section.description}: ${section.content}`);
-            }
-        });
 
-        console.log(`➡️ Next Lesson: ${lesson.nextLesson}`);
-        
+                return;
+            }
+
+            const section = lesson.sections[currentSectionIndex];
+            contentContainer.innerHTML = "";
+
+            switch (section.type) {
+                case "content":
+                    contentContainer.innerHTML = `<h3 class="text-lg font-semibold">${section.title}</h3><p class="text-gray-700 mt-2">${section.content}</p>`;
+                    break;
+                case "interactive":
+                    contentContainer.innerHTML = `
+                        <h3 class="text-lg font-semibold">${section.question}</h3>
+                        <div class="options mt-2">
+                            ${section.options.map((option, index) => 
+                                `<button class="option-btn bg-gray-200 px-4 py-2 rounded m-1 hover:bg-gray-300" data-index="${index}">${option}</button>`
+                            ).join("")}
+                        </div>
+                    `;
+
+                    contentContainer.querySelectorAll(".option-btn").forEach(button => {
+                        button.addEventListener("click", () => {
+                            const selected = parseInt(button.dataset.index);
+                            button.classList.add(selected === section.correct ? "bg-green-500 text-white" : "bg-red-500 text-white");
+
+                            setTimeout(() => {
+                                currentSectionIndex++;
+                                loadSection();
+                            }, 2000);
+                        });
+                    });
+                    return;
+                case "video_placeholder":
+                    contentContainer.innerHTML = `<h3 class="text-lg font-semibold">${section.description}</h3><p class="text-gray-700 mt-2">${section.content}</p><div class="video-placeholder bg-gray-300 h-40 flex items-center justify-center mt-2">🎥 Video Placeholder</div>`;
+                    break;
+                case "summary":
+                    contentContainer.innerHTML = `<h3 class="text-lg font-semibold">Lesson Summary</h3><p class="text-gray-700 mt-2">${section.content}</p>`;
+                    break;
+                default:
+                    console.warn(`⚠️ Unknown section type: ${section.type}`);
+            }
+
+            nextBtn.classList.remove("hidden");
+            nextBtn.onclick = () => {
+                currentSectionIndex++;
+                loadSection();
+            };
+        }
+
+        loadSection();
+
     } catch (error) {
         console.error("❌ Error in startLesson:", error);
     }
 }
-
-// Language handling in main.js
-const languageSystem = {
-    translations: {
-        en: {
-            heroTitle: "From Earth to Space in 36 Months",
-            subtitle: "Like Tesla's FSD for Space Training: Intelligent, Adaptive, Revolutionary"
-        },
-        zh: {
-            heroTitle: "36个月从地球到太空",
-            subtitle: "像特斯拉FSD一样的太空训练：智能、适应性、革命性"
-        },
-        ko: {
-            heroTitle: "지구에서 우주까지 36개월",
-            subtitle: "테슬라 FSD와 같은 우주 훈련: 지능적, 적응적, 혁명적"
-        },
-        es: {
-            heroTitle: "De la Tierra al Espacio en 36 Meses",
-            subtitle: "Como el FSD de Tesla para el entrenamiento espacial: Inteligente, Adaptativo, Revolucionario"
-        }
-    },
-
-    init() {
-        this.buttons = document.querySelectorAll('.language-option');
-        this.contentElements = document.querySelectorAll('[data-i18n]');
-        this.setupListeners();
-        this.loadSavedLanguage();
-    },
-
-    setupListeners() {
-        this.buttons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                const lang = e.target.closest('button').dataset.lang;
-                this.setLanguage(lang);
-                this.updateActiveButton(button);
-                document.getElementById('menuOverlay').classList.add('translate-x-full');
-            });
-        });
-    },
-
-    setLanguage(lang) {
-        this.contentElements.forEach(el => {
-            const key = el.dataset.i18n;
-            if (this.translations[lang]?.[key]) {
-                el.textContent = this.translations[lang][key];
-            }
-        });
-        localStorage.setItem('preferredLanguage', lang);
-    },
-
-    updateActiveButton(activeButton) {
-        this.buttons.forEach(btn => btn.classList.remove('active'));
-        activeButton.classList.add('active');
-    },
-
-    loadSavedLanguage() {
-        const saved = localStorage.getItem('preferredLanguage') || 'en';
-        const button = document.querySelector(`[data-lang="${saved}"]`);
-        if (button) {
-            this.setLanguage(saved);
-            this.updateActiveButton(button);
-        }
-    }
-};
-
-// Initialize language system
-languageSystem.init();
-    const lesson = lessons[lessonNumber];
-    if (!lesson) {
-        console.error(`❌ Lesson ${lessonNumber} not found!`);
-        return;
-    }
-
-    const overlay = document.querySelector('.mode-overlay');
-    overlay.innerHTML = `
-        <div class="lesson-interface p-6 bg-white rounded shadow-lg max-w-lg mx-auto">
-            <h2 class="text-xl font-bold text-gray-900">${lesson.title}</h2>
-            <div id="lessonContent" class="lesson-content mt-4"></div>
-            <button id="nextSectionBtn" class="hidden bg-blue-500 text-white px-4 py-2 mt-4 rounded hover:bg-blue-700 transition">Next</button>
-        </div>
-    `;
-
-    const contentContainer = overlay.querySelector("#lessonContent");
-    const nextBtn = overlay.querySelector("#nextSectionBtn");
-
-    let currentSectionIndex = 0;
-
-    function loadSection() {
-        if (currentSectionIndex >= lesson.sections.length) {
-            overlay.innerHTML = `
-                <div class="lesson-complete p-6 bg-green-100 text-green-800 rounded shadow-md text-center">
-                    <h2 class="text-xl font-bold">🎉 Lesson Complete!</h2>
-                    <p class="mt-2">You've completed <strong>${lesson.title}</strong>. Your next lesson is: <strong>${lesson.nextLesson}</strong>.</p>
-                    <button class="continue-btn bg-green-500 text-white px-4 py-2 mt-4 rounded hover:bg-green-700 transition">Continue</button>
-                </div>
-            `;
-
-            // Progress bar update
-            const progressElement = document.querySelector(".progress");
-            const progressCount = document.querySelector("#lessonProgressCount");
-            if (progressElement && progressCount) {
-                progressElement.style.width = `100%`;
-                progressCount.textContent = "5"; // Mark lesson complete
-            }
-
-            // Continue button event
-            overlay.querySelector(".continue-btn").addEventListener("click", () => {
-                this.beginTrainingJourney();
-            });
-            return;
-        }
-
-        const section = lesson.sections[currentSectionIndex];
-        contentContainer.innerHTML = "";
-
-        if (section.type === "intro" || section.type === "content") {
-            contentContainer.innerHTML = `
-                <h3 class="text-lg font-semibold">${section.title || ""}</h3>
-                <p class="text-gray-700 mt-2">${section.content}</p>
-            `;
-        } else if (section.type === "interactive") {
-            contentContainer.innerHTML = `
-                <h3 class="text-lg font-semibold">${section.question}</h3>
-                <div class="options mt-2">
-                    ${section.options.map((option, index) => 
-                        `<button class="option-btn bg-gray-200 px-4 py-2 rounded m-1 hover:bg-gray-300" data-index="${index}">${option}</button>`
-                    ).join("")}
-                </div>
-            `;
-
-            contentContainer.querySelectorAll(".option-btn").forEach(button => {
-                button.addEventListener("click", () => {
-                    const selected = parseInt(button.dataset.index);
-                    if (selected === section.correct) {
-                        button.classList.add("bg-green-500", "text-white");
-                        console.log("✅ Correct Answer!");
-                    } else {
-                        button.classList.add("bg-red-500", "text-white");
-                        console.log("❌ Incorrect Answer!");
-                    }
-
-                    // Move to the next section after 2 seconds
-                    setTimeout(() => {
-                        currentSectionIndex++;
-                        loadSection();
-                    }, 2000);
-                });
-            });
-
-            return;
-        } else if (section.type === "video_placeholder") {
-            contentContainer.innerHTML = `
-                <h3 class="text-lg font-semibold">${section.description}</h3>
-                <p class="text-gray-700 mt-2">${section.content}</p>
-                <div class="video-placeholder bg-gray-300 h-40 flex items-center justify-center mt-2">
-                    🎥 Video Placeholder
-                </div>
-            `;
-        } else if (section.type === "summary") {
-            contentContainer.innerHTML = `
-                <h3 class="text-lg font-semibold">Lesson Summary</h3>
-                <p class="text-gray-700 mt-2">${section.content}</p>
-            `;
-        }
-
-        nextBtn.classList.remove("hidden");
-        nextBtn.onclick = () => {
-            currentSectionIndex++;
-            loadSection();
-        };
-    }
-
-    loadSection();
-}
-
-        const overlay = document.querySelector('.mode-overlay');
-        const lesson = lessons[lessonNumber];
-        
-        if (!lesson) {
-            console.error('Lesson not found');
-            return;
-        }
 
         overlay.innerHTML = `
             <div class="lesson-interface">

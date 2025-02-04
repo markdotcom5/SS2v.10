@@ -226,5 +226,52 @@ router.get('/recommendations', authenticate, async (req, res) => {
         res.status(500).json({ error: 'Failed to get recommendations.' });
     }
 });
-
+// routes/modules.js (add this below your other endpoints)
+// routes/modules.js (add this below your other endpoints)
+router.get('/:moduleType/details', authenticate, async (req, res) => {
+    try {
+      const moduleType = req.params.moduleType;
+      const moduleDetails = {
+        physical: {
+          name: "Zero-G Adaptation",
+          content: "This module focuses on adapting your muscles and balance for zero-gravity conditions. Exercises include cardiovascular conditioning, strength training, and spatial orientation drills.",
+          subModules: [
+            "Zero-G Adaptation drills",
+            "Cardiovascular conditioning routines",
+            "Strength training sessions",
+            "Spatial orientation challenges"
+          ]
+        },
+        technical: {
+          name: "Systems Operations",
+          content: "In this module, you'll master the critical systems that power spacecraft. Learn navigation systems, equipment maintenance, and emergency procedures.",
+          subModules: [
+            "Systems operations overview",
+            "Emergency procedures walkthrough",
+            "Navigation systems simulations",
+            "Equipment maintenance tutorials"
+          ]
+        },
+        simulation: {
+          name: "Mission Scenarios",
+          content: "Prepare for real-life scenarios in space with simulations of docking procedures, EVA operations, and emergency responses. Practice makes perfect.",
+          subModules: [
+            "Mission scenario simulations",
+            "Docking procedures practice",
+            "EVA operations training",
+            "Emergency response drills"
+          ]
+        }
+      };
+  
+      if (!moduleDetails[moduleType]) {
+        return res.status(404).json({ error: 'Module not found.' });
+      }
+      res.status(200).json({ success: true, module: moduleDetails[moduleType] });
+    } catch (error) {
+      console.error('Error fetching module details:', error.message);
+      res.status(500).json({ error: 'Failed to fetch module details.' });
+    }
+  });
+  
 module.exports = router;
